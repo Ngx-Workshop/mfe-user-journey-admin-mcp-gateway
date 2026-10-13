@@ -26,12 +26,10 @@ describe('McpConsoleStore', () => {
         annotations: { ...tool.annotations },
         inputSchema: { type: 'object' as const },
       })),
-      call: jasmine
-        .createSpy('call')
-        .and.resolveTo({
-          content: [],
-          structuredContent: { workshops: [] },
-        }),
+      call: jasmine.createSpy('call').and.resolveTo({
+        content: [],
+        structuredContent: { workshops: [] },
+      }),
       close: jasmine.createSpy('close').and.resolveTo(),
     };
     api.open.and.resolveTo(connection);

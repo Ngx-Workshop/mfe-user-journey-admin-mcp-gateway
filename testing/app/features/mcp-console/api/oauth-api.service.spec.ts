@@ -41,9 +41,7 @@ describe('OAuth PKCE redemption', () => {
   it('redeems exact resource and verifier without cookies and consumes the transaction', async () => {
     const access = await api.complete(callback());
     expect(access?.token).toBe('memory-only');
-    expect(
-      sessionStorage.getItem('ngx-mcp-gateway-pkce')
-    ).toBeNull();
+    expect(sessionStorage.getItem('ngx-mcp-gateway-pkce')).toBeNull();
     expect(history.replaceState).toHaveBeenCalledBefore(request);
     const init = request.calls.mostRecent().args[1] as RequestInit;
     const body = init.body as URLSearchParams;
