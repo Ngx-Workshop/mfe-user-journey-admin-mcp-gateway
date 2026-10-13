@@ -1,30 +1,11 @@
-# mfe-user-journey-admin-mcp-gateway
+# Admin MCP Gateway
 
-Angular user-journey remote scaffolded from the Ngx-Workshop seed-mfe-remote template.
+Angular federated read-only MCP catalog explorer. Connect Ngx Workshop, discover tools and inspect workshop summaries, ordered outlines and coding labs with structured and expandable JSON results. Publishing remains in AI Publisher.
 
-Use Node.js 22 or newer, matching the seeds.
+Open [MCP Gateway overview](https://admin.ngx-workshop.io/mcp-gateway/overview). The root redirects to overview; the seed hello-world route is replaced. OAuth uses PKCE and in-memory tokens; the auth owner must register this exact new callback for the existing public client ngx-workshop-ai-publisher-prod before live sign-in works.
 
-## Development
+Use Node 22, npm ci and npm run dev:bundle (port 4201). Run npm run check:architecture, npm test -- --watch=false --browsers=ChromeHeadless and npm run build. For isolated verification use npm run build -- --output-path dist/migration-verification.
 
-```sh
-npm install
-npm run dev:bundle
-# Build:
-npm run build
-# Tests (requires Chrome):
-npm test -- --watch=false --browsers=ChromeHeadless
-```
+Federation exports ./Component (default App) and ./Routes (named Routes) from remoteEntry.js. Remote name remains mfe-user-journey-admin-mcp-gateway; deployment directory remains /opt/mfe-remotes/mfe-user-journey-admin-mcp-gateway/. Use http://localhost:4201/remoteEntry.js as a shell development override.
 
-## Integration
-
-Register in https://admin.ngx-workshop.io/list-mfe-remotes with name mfe-user-journey-admin-mcp-gateway, role user-journey, and remote URL https://beta.ngx-workshop.io/remotes/mfe-user-journey-admin-mcp-gateway/remoteEntry.js.
-Use http://localhost:4201/remoteEntry.js for a session-local development override.
-Preserved exports: ./Component (default App) and ./Routes (named Routes).
-Deployment directory: /opt/mfe-remotes/mfe-user-journey-admin-mcp-gateway/.
-The example client still uses /api/example-crud and the published seed service contracts; replace them when implementing your domain.
-
-## Seed adoption
-
-This is a starting scaffold with inherited example code. Read [seed adoption](docs/seed-adoption.md), [development limitations](docs/development.md), and [integration guidance](WORKSHOP.md). Replace example behavior with your product, adapt tests, and regenerate contracts as needed.
-
-Scaffolding saves seed deployment examples in .ngx-workshop/workflows. Run ngx-workshop deploy . to publish and deploy this project. For services, the CLI updates/pushes Nginx and waits for its deployment to succeed before dispatching service deployment. Configure Actions secrets first; see the CLI deployment guide. Contracts publishing and MFE registration remain separate operations.
+See [architecture](docs/architecture.md), [development](docs/development.md) and [migration handoff](specs/002-mcp-gateway-migration/handoff.md).

@@ -1,89 +1,30 @@
 # Architecture and external context
 
-Updated 2026-10-09 for [001 MVVM starter](../specs/001-mvvm-starter/spec.md).
-The executable seed demonstrates example-document list/search/create/edit/delete.
-It owns this journey; shell, gateway, auth and backend data are external owners.
+Updated 2026-10-13 for [002 MCP Gateway migration](../specs/002-mcp-gateway-migration/spec.md).
 
-## Source map
+## Responsibility and source map
+This remote owns read-only MCP catalog exploration, migrated from AI Publisher. Workshop authoring and publishing remain in AI Publisher. The seed example-documents runtime/tests and seed DTO dependency are removed.
 
-```text
-src/app/
-  app.ts / app.config.ts / app.routes.ts
-  features/example-documents/
-    api/                  # stateless ExampleCrudApiService
-    models/               # generated DTO exports, dialog/form types
-    state/                # singleton ExampleDocumentsStore
-    forms/                # stateless typed ExampleFormService
-    utils/                # user-facing API error mapping
-    pages/catalog/        # catalog orchestration + scoped CatalogViewModel
-    components/
-      document-card/      # typed card presentation
-      document-form/      # document/address form presentations
-      editor/             # dialog orchestration + scoped EditorViewModel
-testing/
-  app/                    # mirrors source app/features folders
-  fixtures/               # synthetic test-only DTOs
-scripts/check-architecture.mjs
-```
+features/mcp-console contains:
+- api/mcp-api.service.ts: stateless official MCP SDK/Streamable HTTP connection factory.
+- api/oauth-api.service.ts: browser S256 PKCE and single-use callback validation.
+- models/console.models.ts: published DTOs, connection abstraction and tool choices.
+- state/mcp-console.store.ts: root server/connection/result orchestration.
+- state/oauth-connection.store.ts: root sign-in and expiry orchestration.
+- state/catalog-result.ts: output schema and tool error validation.
+- pages/console: scoped typed forms/VM and OnPush composition.
+- components/result: typed input/output catalog result presentation.
 
-The data flow is API → singleton store → scoped VM → component template.
-User intents flow from presentation outputs → orchestration/VM → store → API.
-App is a thin public composition entry point. Catalog/dialog components inject
-scoped VMs and UI integration such as MatDialog. Cards/forms inject no server state.
-Forms accept a typed FormGroup from the owning scoped VM; this demonstrates nested
-presentation without putting forms in singleton state.
+API → singleton state → scoped VM → view. The VM uses switchMap for replaceable connections and exhaustMap for commands, with lifetime teardown. Disconnect aborts handshake fetches, closes the SDK, invalidates stale results and clears shared state. ConsoleComponent retains the cohesive inline console template/styles (519 lines) as a migration exception to the approximate line guideline.
 
-The store exposes readonly shared signals and owns loading/error/mutation state.
-Its root refresh stream uses switchMap to cancel stale reads and retains successful
-records on read failure. Mutation observables trigger refresh on success; finalize
-releases pending state on completion/error/cancellation. A refresh error after a
-successful write stays a read error, not a failed write that encourages duplicates.
-Scoped command streams use exhaustMap; takeUntilDestroyed ends their requests.
-Editor errors keep the form open and preserve input for retry. Form mapping sends
-false archived and blank description explicitly and validates optional addresses.
+## Protocol, authorization and contracts
+Dependencies: @modelcontextprotocol/client 2.3.1, @tmdjr/service-mcp-gateway-contracts 1.1.0 from a committed vendor tarball, and Ajv 8.17.1. No sibling build/runtime dependency. Protocol is pinned to 2026-07-28. Known commands list_workshops(sectionId), get_workshop(sectionId, workshopId), get_coding_lab(labId, versionId?) run only when discovered with readOnlyHint; discovery grants no authorization. Published schemas validate results; content is safely interpolated.
 
-## Federation and providers
+SDK fetch/request timeout: 15 seconds. Requests omit cookies and reject redirects; fetch bypasses shell HttpClient session interceptors. Endpoints require HTTPS except loopback HTTP; URL credentials/query/fragments are rejected.
 
-Keep named/default App, named Routes, mfe-user-journey-admin-mcp-gateway, ./Component, ./Routes and
-remoteEntry.js. The route export retains empty-path redirect to hello-world.
-The host supplies HttpClient/session interceptors and Router when it consumes
-Routes. Remote loading does not install standalone appConfig. Standalone bootstrap
-uses App directly and needs no Router because the example has no route navigation.
-It provides zoneless change detection, HTTP and animations. src/styles.scss supplies
-the standalone Material theme; federation does not install this theme in the host.
+OAuth issuer is https://auth.ngx-workshop.io; resource is https://mcp.ngx-workshop.io/mcp. Retain public client ngx-workshop-ai-publisher-prod pending auth-owner redirect registration to the exact https://admin.ngx-workshop.io/mcp-gateway/overview callback. Pending PKCE uses the dedicated ngx-mcp-gateway-pkce session-storage key with a ten-minute bound. Tokens live in memory only; expiry/401 clears the connection and results. No refresh token, browser secret or credential persistence. The shell's legacy login remains independent. Auth client redirect approval is external configuration; changing frontend code does not register the callback.
 
-Angular/Material/CDK 21.1.0, RxJS 7.8.2 and strict shared versions remain unchanged.
-Production webpack disables module concatenation to preserve Angular identities
-across federation boundaries; the inherited optimized configuration failed at
-runtime with a missing defineInjectable export before this repair.
-Module Federation and ngx-build-plus retain inherited 20-series versions; builds
-and standalone verification do not prove every host combination compatible.
+## Federation and routes
+Keep named/default App, named Routes, ./Component, ./Routes, remoteEntry.js and the existing remote identity/shared singleton versions. App composes ConsoleComponent. Empty path redirects to overview; overview renders App; hello-world is removed. The consuming shell must use /mcp-gateway/overview. Existing shell providers/theme apply; standalone appConfig supplies zoneless/HTTP/animations and src/styles.scss supplies its Material theme.
 
-## External contracts
-
-The installed @tmdjr/seed-service-nestjs-contracts 0.0.7 types define the consumer
-DTOs; backend validation defines accepted requests. The stateless API normalizes
-its base URL to /api/example-crud and encodes IDs once for detail paths.
-
-| Method | Browser path | Contract |
-| --- | --- | --- |
-| GET | /api/example-crud | ExampleMongodbDocDto[] |
-| GET | /api/example-crud/:id | ExampleMongodbDocDto |
-| POST | /api/example-crud | CreateExampleMongodbDocDto → document |
-| PATCH | /api/example-crud/:id | UpdateExampleMongodbDocDto → document |
-| DELETE | /api/example-crud/:id | void |
-
-The backend owns persistence/authorization. The seed contains no auth guard and
-does not fabricate credentials or backend behavior. Blank address fields omit
-the address property; PATCH then preserves an existing address. The published
-update DTO provides no null/removal field, so removing an address requires a
-producer contract change. Partial nonblank addresses are invalid locally.
-
-Host/registry owners are mfe-shell-workshop, mfe-shell-admin and
-service-mfe-orchestrator. Gateway owners map the browser API prefix to
-seed-service-nestjs. Package/shared metadata owners are independent repositories.
-No sibling checkout is needed; use local HTTP doubles when services are unavailable.
-
-Build output remains dist/mfe-user-journey-admin-mcp-gateway. The existing deploy workflow targets
-/opt/mfe-remotes/mfe-user-journey-admin-mcp-gateway on main. Registration/gateway configuration and
-actual deployment are separate integration work; this change does not execute them.
+Build output/deployment remain dist/mfe-user-journey-admin-mcp-gateway and /opt/mfe-remotes/mfe-user-journey-admin-mcp-gateway. No deployment or production registration is performed by the local migration.

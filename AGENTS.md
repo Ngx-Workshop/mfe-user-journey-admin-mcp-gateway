@@ -1,8 +1,8 @@
 # Agent entry point — mfe-user-journey-admin-mcp-gateway
 
-This repository is the Angular remote seed for Ngx-Workshop. Assume you have
+This repository is the Angular admin MCP Gateway console for Ngx-Workshop. Assume you have
 access to this repository only. The shell, gateway, services, and shared libraries
-are separate repositories; their source is not required to understand this seed.
+are separate repositories; their source is not required to understand this remote.
 
 ## Read before implementation
 
