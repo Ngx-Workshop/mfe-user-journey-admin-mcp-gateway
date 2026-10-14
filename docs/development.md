@@ -16,6 +16,6 @@ Default port is 4201; avoid running a competing server. Isolated build output av
 
 Mirrored tests in testing/app use synthetic SDK/fetch/store doubles for protocol handshake, headers/arguments, connection teardown/races, errors, schema validation, inputs and rendered results. OAuth tests use synthetic pending PKCE transactions and mocked token responses; no live credentials. Set CHROME_BIN to the installed Chrome binary if needed.
 
-Manual acceptance: disconnected/loading/error/empty/content states, tool selection, identifiers, structured/JSON drilldown, disconnect during requests, keyboard access and responsive layout. Live Connect requires the auth owner to register the exact new overview callback for ngx-workshop-ai-publisher-prod. Verify account login, consent, return to overview, expiry and reconnect after that change. Unit/build checks do not prove deployment or live OAuth.
+Manual acceptance: disconnected/loading/error/empty/content states, tool selection, identifiers, structured/JSON drilldown, disconnect during requests, keyboard access and responsive layout. The exact new overview callback for ngx-workshop-ai-publisher-prod was registered live on 2026-10-13; authorization now redirects to sign-in. Verify account login, consent, return to overview, expiry and reconnect to complete live acceptance. Unit/build checks do not prove deployment or live OAuth.
 
 See [migration handoff](../specs/002-mcp-gateway-migration/handoff.md). Prior 001 docs describe the inherited seed; example CRUD is no longer part of this product.
