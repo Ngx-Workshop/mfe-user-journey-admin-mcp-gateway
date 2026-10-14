@@ -2,6 +2,9 @@
 name: Deploy mfe-user-journey-admin-mcp-gateway
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
