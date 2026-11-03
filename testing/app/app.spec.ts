@@ -35,7 +35,7 @@ describe('MCP console journey', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h1')?.textContent).toContain(
-      'Explore your workshop catalog.'
+      'MCP Gateway'
     );
     expect(el.textContent).toContain('Disconnected');
     expect(el.textContent).toContain('MCP catalog explorer');
@@ -56,4 +56,28 @@ describe('MCP console journey', () => {
     expect(el.textContent).toContain('No workshops in this section');
     expect(el.textContent).toContain('View response JSON');
   });
+  it('switches request fields and preserves validation/read-only command gating', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges(); await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const store = TestBed.inject(McpConsoleStore);
+    const run = spyOn(store, 'run').and.resolveTo();
+    element.querySelectorAll<HTMLButtonElement>('.console__tool')[2].click();
+    fixture.detectChanges();
+    expect(element.querySelector('input[formControlName="labId"]')).not.toBeNull();
+    const submit = element.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    expect(submit.disabled).toBeTrue();
+    submit.click(); expect(run).not.toHaveBeenCalled();
+    await store.connect({ endpoint: '/mcp', token: '' });
+    fixture.detectChanges();
+    submit.click(); fixture.detectChanges();
+    expect(element.textContent).toContain('24 hexadecimal characters');
+    expect(run).not.toHaveBeenCalled();
+    const lab = element.querySelector<HTMLInputElement>('input[formControlName="labId"]')!;
+    lab.value = '0123456789abcdef01234567'; lab.dispatchEvent(new Event('input'));
+    fixture.detectChanges(); submit.click();
+    await fixture.whenStable();
+    expect(run).toHaveBeenCalledWith('get_coding_lab', { labId: '0123456789abcdef01234567' });
+  });
+
 });

@@ -1,519 +1,107 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  inject,
-} from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef,
+  inject, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { NgxActionBar, NgxButton, NgxInlineStatus } from '@tmdjr/ngx-workshop-design-system';
 import { ConsoleViewModel } from './console.view-model';
+import { ConsolePanelComponent } from '../../components/console-panel.component';
+import { ConsoleToolsComponent } from '../../components/console-tools.component';
+import { ConsoleRequestComponent } from '../../components/console-request.component';
 import { ResultComponent } from '../../components/result/result.component';
-
+import { observeWorkspaceHeight } from '../../utils/panel-body-viewport';
+import type { ToolName } from '../../models/console.models';
 @Component({
-  selector: 'ngx-mcp-console',
-  imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatProgressBarModule,
-    ResultComponent,
-  ],
-  providers: [ConsoleViewModel],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'ngx-mcp-console', host: { class: 'ngx-design-system' },
+  imports: [MatButtonModule, MatIconModule, MatProgressBarModule, NgxActionBar, NgxButton, NgxInlineStatus,
+    ConsolePanelComponent, ConsoleToolsComponent, ConsoleRequestComponent, ResultComponent],
+  providers: [ConsoleViewModel], changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <main class="console">
-      <header class="console__header">
-        <div>
-          <p class="console__eyebrow">NGX WORKSHOP / MCP GATEWAY</p>
-          <h1>Explore your workshop catalog.</h1>
-          <p class="console__intro">
-            Connect to the MCP gateway and inspect published workshops
-            and coding labs.
-          </p>
+    <ngx-action-bar heading="MCP Gateway">
+      <ngx-inline-status ngxActionBarIndicators [announce]="true"
+        [label]="vm.status() === 'connected' ? 'Connected' : vm.status() === 'connecting' ? 'Connecting…' : 'Disconnected'"
+        [tone]="vm.status() === 'connected' ? 'success' : 'neutral'" />
+      <span ngxActionBarIndicators class="console__indicator">MCP catalog explorer</span>
+      @if (vm.status() === 'disconnected') {
+        <button mat-flat-button ngxButton surface="outline" shape="chevron" type="button"
+          [disabled]="vm.signingIn()" (click)="vm.connect()">
+          <mat-icon>link</mat-icon>{{ vm.signingIn() ? 'Completing sign-in…' : 'Connect Ngx Workshop' }}
+        </button>
+      } @else {
+        <button mat-flat-button ngxButton surface="outline" type="button" (click)="vm.disconnect()"><mat-icon>link_off</mat-icon>Disconnect</button>
+      }
+    </ngx-action-bar>
+    <main class="console" aria-label="MCP catalog console">
+      <div #workspace class="console__workspace" [style.height.px]="workspaceHeight()">
+        <div class="console__switch" role="group" aria-label="Console panels">
+          <button mat-button type="button" [attr.aria-pressed]="pane() === 'tools'" (click)="pane.set('tools')">Gateway</button>
+          <button mat-button type="button" [attr.aria-pressed]="pane() === 'request'" (click)="pane.set('request')">Request</button>
+          <button mat-button type="button" [attr.aria-pressed]="pane() === 'response'" (click)="pane.set('response')">Response</button>
         </div>
-        <span class="console__badge">MCP catalog explorer</span>
-      </header>
-      <section
-        class="console__connection"
-        aria-labelledby="connection-title"
-      >
-        <div class="console__section-heading">
-          <div>
-            <p class="console__eyebrow">01 / CONNECT</p>
-            <h2 id="connection-title">MCP gateway</h2>
-          </div>
-          <span class="console__status" role="status">{{
-            vm.status() === 'connected'
-              ? '● Connected'
-              : vm.status() === 'connecting'
-                ? '◌ Connecting…'
-                : '○ Disconnected'
-          }}</span>
-        </div>
-        @if (vm.status() === 'disconnected') {
-          <p class="console__note">
-            Sign in with your Ngx Workshop account and approve access
-            to the published catalog.
-          </p>
-          <button
-            mat-flat-button
-            [disabled]="vm.signingIn()"
-            (click)="vm.connect()"
-          >
-            {{
-              vm.signingIn()
-                ? 'Completing sign-in…'
-                : 'Connect Ngx Workshop'
-            }}
-          </button>
-          <p class="console__note">
-            Your connection expires automatically. Reconnect when
-            prompted.
-          </p>
-        } @else {
-          <div class="console__connected">
-            <div>
-              <strong>{{
-                vm.server() || 'Discovering server capabilities…'
-              }}</strong>
-              <p>{{ vm.tools().length }} tools discovered</p>
-            </div>
-            <button mat-stroked-button (click)="vm.disconnect()">
-              Disconnect
-            </button>
-          </div>
-        }
-      </section>
-      @if (vm.status() === 'connecting' || vm.running()) {
-        <mat-progress-bar
-          mode="indeterminate"
-          aria-label="Waiting for MCP gateway"
-        />
-      }
-      @if (vm.signInError()) {
-        <p class="console__error" role="alert">
-          {{ vm.signInError() }}
-        </p>
-      }
-      @if (vm.error()) {
-        <p class="console__error" role="alert">{{ vm.error() }}</p>
-      }
-      <div class="console__workspace">
-        <section class="console__tools" aria-labelledby="tools-title">
-          <p class="console__eyebrow">02 / EXPLORE</p>
-          <h2 id="tools-title">Choose a tool</h2>
-          <p class="console__note">
-            Three ways to inspect published content.
-          </p>
-          <div class="console__tool-list">
-            @for (tool of vm.choices; track tool.name) {
-              <button
-                class="console__tool"
-                [class.console__tool--selected]="
-                  vm.selected() === tool.name
-                "
-                [attr.aria-pressed]="vm.selected() === tool.name"
-                [disabled]="vm.running()"
-                (click)="vm.select(tool.name)"
-              >
-                <strong>{{ tool.title }}</strong
-                ><span>{{ tool.description }}</span
-                ><code>{{ tool.name }}</code>
-              </button>
-            }
-          </div>
-          <form
-            class="console__tool-form"
-            [formGroup]="vm.toolForm"
-            (ngSubmit)="vm.run()"
-          >
-            <h3>{{ vm.active().title }}</h3>
-            @if (vm.selected() !== 'get_coding_lab') {
-              <mat-form-field appearance="outline"
-                ><mat-label>Section ID</mat-label
-                ><input
-                  matInput
-                  formControlName="sectionId"
-                  maxlength="120"
-                  required
-                  [readonly]="vm.running()"
-                /><mat-hint
-                  >The catalog’s section identifier.</mat-hint
-                ></mat-form-field
-              >
-              @if (vm.selected() === 'get_workshop') {
-                <mat-form-field appearance="outline"
-                  ><mat-label>Workshop ID</mat-label
-                  ><input
-                    matInput
-                    formControlName="workshopId"
-                    maxlength="120"
-                    required
-                    [readonly]="vm.running()"
-                /></mat-form-field>
-              }
-            } @else {
-              <mat-form-field appearance="outline"
-                ><mat-label>Lab ID</mat-label
-                ><input
-                  matInput
-                  formControlName="labId"
-                  required
-                  [readonly]="vm.running()"
-                /><mat-hint
-                  >24 hexadecimal characters.</mat-hint
-                ></mat-form-field
-              >
-              <mat-form-field appearance="outline"
-                ><mat-label>Version ID (optional)</mat-label
-                ><input
-                  matInput
-                  formControlName="versionId"
-                  [readonly]="vm.running()"
-                /><mat-hint
-                  >Leave blank for the latest published
-                  version.</mat-hint
-                ></mat-form-field
-              >
-            }
-            @if (vm.validation()) {
-              <p class="console__error" role="alert">
-                {{ vm.validation() }}
-              </p>
-            }
-            <button
-              mat-flat-button
-              type="submit"
-              [disabled]="!vm.available() || vm.running()"
-            >
-              {{ vm.running() ? 'Running tool…' : 'Run tool →' }}
-            </button>
-            @if (vm.status() === 'connected' && !vm.available()) {
-              <p class="console__note">
-                This server did not advertise this tool as read-only.
-              </p>
-            }
-          </form>
-          @if (vm.status() === 'connected') {
-            <details class="console__discovery">
-              <summary>
-                Discovered tools ({{ vm.tools().length }})
-              </summary>
-              @for (tool of vm.tools(); track tool.name) {
-                <p>
-                  <code>{{ tool.name }}</code
-                  ><br />{{ tool.description }}
-                </p>
-              } @empty {
-                <p>This server has no tools.</p>
-              }
-            </details>
-          }
-        </section>
-        <section
-          class="console__results"
-          aria-labelledby="results-title"
-          [attr.aria-busy]="vm.running()"
-        >
-          <div class="console__section-heading">
-            <div>
-              <p class="console__eyebrow">03 / INSPECT</p>
-              <h2 id="results-title">Response</h2>
-            </div>
-            <span class="console__format">STRUCTURED + JSON</span>
-          </div>
-          <div role="status" class="console__announcement">
-            {{
-              vm.running()
-                ? 'Waiting for tool response.'
-                : vm.result()
-                  ? 'Tool response received.'
-                  : ''
-            }}
-          </div>
+        <ngx-mcp-console-panel heading="Gateway & tools" eyebrow="MCP / EXPLORE" shape="chamfered"
+          [class.console__panel--hidden]="pane() !== 'tools'">
+          @if (vm.signInError()) { <p class="console__error" role="alert">{{ vm.signInError() }}</p> }
+          <ngx-mcp-console-tools [status]="vm.status()" [server]="vm.server()" [tools]="vm.tools()"
+            [selected]="vm.selected()" [running]="vm.running()" (select)="selectTool($event)" />
+        </ngx-mcp-console-panel>
+        <ngx-mcp-console-panel heading="Request" eyebrow="MCP / INPUT" [resetKey]="vm.selected()"
+          [class.console__panel--hidden]="pane() !== 'request'">
+          <ngx-mcp-console-request [form]="vm.toolForm" [selected]="vm.selected()" [running]="vm.running()"
+            [available]="vm.available()" [connected]="vm.status() === 'connected'"
+            [validation]="vm.validation()" (run)="run()" />
+        </ngx-mcp-console-panel>
+        <ngx-mcp-console-panel heading="Response" eyebrow="MCP / INSPECT" background="grid" [resetKey]="vm.result()"
+          [class.console__panel--hidden]="pane() !== 'response'">
+          @if (vm.status() === 'connecting' || vm.running()) { <mat-progress-bar mode="indeterminate" aria-label="Waiting for MCP gateway" /> }
+          @if (vm.error()) { <p class="console__error" role="alert">{{ vm.error() }}</p> }
+          <div role="status" class="console__announcement">{{ vm.running() ? 'Waiting for tool response.' : vm.result() ? 'Tool response received.' : '' }}</div>
           @if (vm.result(); as result) {
-            <ngx-mcp-result
-              [result]="result"
-              (workshopSelected)="
-                vm.inspectWorkshop(
-                  $event.sectionId,
-                  $event.workshopId
-                )
-              "
-              (labSelected)="vm.inspectLab($event)"
-            />
+            <ngx-mcp-result [result]="result" (workshopSelected)="inspectWorkshop($event.sectionId, $event.workshopId)" (labSelected)="inspectLab($event)" />
           } @else {
             <div class="console__empty">
-              <span class="console__empty-icon" aria-hidden="true"
-                >⌘</span
-              >
-              <h3>
-                {{
-                  vm.running()
-                    ? 'Fetching catalog content…'
-                    : 'A window into your content'
-                }}
-              </h3>
-              <p>
-                {{
-                  vm.status() !== 'connected'
-                    ? 'Connect your gateway to discover its tools. Then choose a tool and supply its identifiers.'
-                    : vm.error()
-                      ? 'Your request did not complete. Review the message and run the tool again.'
-                      : 'Run a tool to view workshop metadata, learning outlines or published coding labs here.'
-                }}
-              </p>
-              <span class="console__empty-caption"
-                >Public content only · No content changes</span
-              >
+              <mat-icon aria-hidden="true">hub</mat-icon>
+              <h2>{{ vm.running() ? 'Fetching catalog content…' : 'A window into your content' }}</h2>
+              <p>{{ vm.status() !== 'connected' ? 'Connect your gateway to discover its tools. Then choose a tool and supply its identifiers.'
+                : vm.error() ? 'Your request did not complete. Review the message and run the tool again.' : 'Run a tool to inspect published content here.' }}</p>
             </div>
           }
-          <p class="console__boundary">
-            Catalog results describe published content. They do not
-            determine learner access or eligibility.
-          </p>
-        </section>
+          <p class="console__boundary">Public content only · No content changes. Catalog results do not determine learner access or eligibility.</p>
+        </ngx-mcp-console-panel>
       </div>
     </main>
   `,
-  styles: [
-    `
-      :host {
-        display: block;
-        color: var(--mat-sys-on-surface, #202a34);
-        background: var(--mat-sys-surface, #f8fafb);
-      }
-      .console {
-        max-width: 1240px;
-        margin: auto;
-        padding: 2.5rem;
-      }
-      .console__header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-      }
-      .console__eyebrow {
-        font-size: 0.68rem;
-        letter-spacing: 0.16em;
-        font-weight: 700;
-        color: var(--mat-sys-primary, #006879);
-        margin: 0 0 0.7rem;
-      }
-      h1 {
-        font-size: clamp(1.8rem, 4vw, 2.8rem);
-        letter-spacing: -0.045em;
-        margin: 0;
-      }
-      h2 {
-        font-size: 1.15rem;
-        margin: 0;
-      }
-      h3 {
-        font-size: 1rem;
-      }
-      .console__intro {
-        color: var(--mat-sys-on-surface-variant, #566573);
-        line-height: 1.6;
-        margin-bottom: 0;
-      }
-      .console__badge,
-      .console__status {
-        border-radius: 2rem;
-        padding: 0.5rem 0.8rem;
-        font-size: 0.75rem;
-        white-space: nowrap;
-        background: var(--mat-sys-secondary-container, #e2f0ef);
-        color: var(--mat-sys-on-secondary-container, #24544f);
-      }
-      .console__connection,
-      .console__tools,
-      .console__results {
-        border: 1px solid var(--mat-sys-outline-variant, #d8e0e5);
-        border-radius: 1rem;
-        padding: 1.5rem;
-        background: var(--mat-sys-surface-container-lowest, #fff);
-      }
-      .console__section-heading {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-      }
-      .console__connection-form {
-        display: grid;
-        grid-template-columns: 1.1fr 1fr auto;
-        gap: 1rem;
-        align-items: start;
-      }
-      mat-form-field {
-        width: 100%;
-      }
-      .console__note {
-        font-size: 0.78rem;
-        line-height: 1.6;
-        color: var(--mat-sys-on-surface-variant, #566573);
-      }
-      .console__connected {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .console__workspace {
-        display: grid;
-        grid-template-columns: 350px minmax(0, 1fr);
-        gap: 1.5rem;
-        margin-top: 1.5rem;
-        align-items: start;
-      }
-      .console__tool-list {
-        display: grid;
-        gap: 0.6rem;
-        margin: 1.25rem 0;
-      }
-      .console__tool {
-        text-align: left;
-        border: 1px solid var(--mat-sys-outline-variant, #d8e0e5);
-        border-radius: 0.7rem;
-        padding: 0.95rem;
-        background: transparent;
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-      }
-      .console__tool strong,
-      .console__tool span,
-      .console__tool code {
-        display: block;
-      }
-      .console__tool strong {
-        font-size: 0.9rem;
-      }
-      .console__tool span {
-        font-size: 0.78rem;
-        line-height: 1.5;
-        margin: 0.4rem 0;
-        color: var(--mat-sys-on-surface-variant, #566573);
-      }
-      .console__tool code {
-        font-size: 0.68rem;
-        color: var(--mat-sys-primary, #006879);
-      }
-      .console__tool--selected {
-        border-color: var(--mat-sys-primary, #006879);
-        background: var(--mat-sys-primary-container, #def1f5);
-      }
-      .console__tool:focus-visible {
-        outline: 2px solid var(--mat-sys-primary, #006879);
-        outline-offset: 3px;
-      }
-
-      .console__tool-form {
-        border-top: 1px solid var(--mat-sys-outline-variant, #d8e0e5);
-        padding-top: 0.5rem;
-      }
-      .console__tool-form mat-form-field {
-        margin-bottom: 0.6rem;
-      }
-      .console__tool-form button {
-        width: 100%;
-      }
-      .console__empty {
-        min-height: 330px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 1rem;
-      }
-      .console__empty-icon {
-        font-size: 2rem;
-        color: var(--mat-sys-primary, #006879);
-        border: 1px solid var(--mat-sys-outline-variant, #d8e0e5);
-        border-radius: 1rem;
-        padding: 0.5rem 1rem;
-      }
-      .console__empty h3 {
-        margin: 1.5rem 0 0;
-        font-size: 1.1rem;
-      }
-      .console__empty p {
-        max-width: 360px;
-        font-size: 0.85rem;
-        line-height: 1.75;
-        color: var(--mat-sys-on-surface-variant, #566573);
-      }
-
-      .console__boundary {
-        border-top: 1px solid var(--mat-sys-outline-variant, #d8e0e5);
-        padding-top: 1rem;
-        margin-top: 1.5rem;
-        font-size: 0.72rem;
-        line-height: 1.6;
-        color: var(--mat-sys-on-surface-variant, #566573);
-      }
-      .console__error {
-        border-left: 3px solid var(--mat-sys-error, #b3261e);
-        padding: 0.85rem;
-        font-size: 0.85rem;
-        color: var(--mat-sys-error, #b3261e);
-        background: var(--mat-sys-error-container, #ffdad6);
-      }
-      .console__discovery {
-        margin-top: 1.2rem;
-        font-size: 0.78rem;
-        line-height: 1.6;
-      }
-      summary {
-        cursor: pointer;
-      }
-      .console__announcement {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-      }
-      @media (max-width: 1000px) {
-        .console__connection-form {
-          grid-template-columns: 1fr;
-        }
-        .console__connection-form button {
-          justify-self: start;
-        }
-      }
-      @media (max-width: 760px) {
-        .console {
-          padding: 1rem;
-        }
-        .console__header {
-          align-items: start;
-          flex-direction: column;
-        }
-        .console__workspace {
-          grid-template-columns: 1fr;
-        }
-        .console__connection,
-        .console__tools,
-        .console__results {
-          padding: 1rem;
-        }
-        .console__format {
-          display: none;
-        }
-      }
-    `,
-  ],
+  styles: [`
+    :host { display: block; min-width: 0; color: var(--ngx-color-text); background: var(--ngx-color-canvas); }
+    ngx-action-bar { --ngx-action-bar-top: var(--mcp-toolbar-top, 96px); }
+    .console { width: calc(100% - 2rem); margin: 0 auto; padding: 1rem 0; }
+    .console__workspace { display: grid; grid-template-columns: minmax(250px, 300px) minmax(260px, 320px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 1rem; min-width: 0; min-height: 0; }
+    .console__switch { display: none; }
+    .console__indicator { font: var(--ngx-font-label); font-size: 0.7rem; }
+    .console__error { color: var(--ngx-color-error); font-size: 0.75rem; overflow-wrap: anywhere; }
+    .console__empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1rem; min-height: 180px; text-align: center; font-size: 0.8rem; }
+    .console__empty mat-icon { color: var(--ngx-color-primary); }
+    .console__empty h2 { font: 600 1rem/1.5 var(--ngx-font-mono); color: var(--ngx-color-text); }
+    .console__boundary { margin-top: 1rem; border-top: 1px solid var(--ngx-color-border); padding-top: 0.75rem; font-size: 0.7rem; }
+    .console__announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    @media (max-width: 1100px) {
+      .console { width: calc(100% - 1rem); padding: 0.5rem 0 1rem; }
+      .console__workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 0.5rem; }
+      .console__switch { display: flex; flex-wrap: wrap; }
+      .console__switch button[aria-pressed='true'] { background: var(--ngx-color-surface-high); }
+      ngx-mcp-console-panel { grid-column: 1; grid-row: 2; }
+      .console__panel--hidden { display: none; }
+    }
+    @media (max-width: 720px) { .console__indicator { display: none; } ngx-action-bar { --ngx-action-bar-top: var(--mcp-toolbar-top, 76px); } }
+  `],
 })
 export class ConsoleComponent {
-  readonly vm = inject(ConsoleViewModel);
+  readonly vm = inject(ConsoleViewModel); readonly pane = signal<'tools' | 'request' | 'response'>('tools');
+  readonly workspaceHeight = signal(0);
+  private readonly workspace = viewChild.required<ElementRef<HTMLElement>>('workspace');
+  private readonly destroyRef = inject(DestroyRef);
+  constructor() { afterNextRender(() => this.destroyRef.onDestroy(observeWorkspaceHeight(this.workspace().nativeElement, height => this.workspaceHeight.set(height)))); }
+  selectTool(name: ToolName): void { this.vm.select(name); this.pane.set('request'); }
+  run(): void { this.vm.run(); if (!this.vm.validation() && this.vm.available()) this.pane.set('response'); }
+  inspectWorkshop(section: string, id: string): void { this.vm.inspectWorkshop(section, id); this.pane.set('request'); }
+  inspectLab(id: string): void { this.vm.inspectLab(id); this.pane.set('request'); }
 }

@@ -30,3 +30,13 @@ Mirrored tests in testing/app use synthetic SDK/fetch/store doubles for protocol
 Manual acceptance: disconnected/loading/error/empty/content states, tool selection, identifiers, structured/JSON drilldown, disconnect during requests, keyboard access and responsive layout. The exact new overview callback for ngx-workshop-ai-publisher-prod was registered live on 2026-10-13; authorization now redirects to sign-in. Verify account login, consent, return to overview, expiry and reconnect to complete live acceptance. Unit/build checks do not prove deployment or live OAuth.
 
 See [migration handoff](../specs/002-mcp-gateway-migration/handoff.md). Prior 001 docs describe the inherited seed; example CRUD is no longer part of this product.
+
+## Design-system verification — 2026-11-02
+The installed design-system 21.0.10 and existing federation singleton provide
+shared panels/action bar/buttons/code blocks and the standalone theme mixin.
+Run the existing architecture/type/Karma checks and isolated production build.
+Browser acceptance covers shell theme inheritance, tool/form switching and
+viewport-bounded desktop/mobile panels without starting a new OAuth grant.
+Connected results, SDK/OAuth behavior and raw/source rendering use the existing
+synthetic test providers. See specs/003-design-system/handoff.md for exact evidence
+and the distinction from live authorization acceptance tracked in feature 002.

@@ -15,7 +15,7 @@ features/mcp-console contains:
 - pages/console: scoped typed forms/VM and OnPush composition.
 - components/result: typed input/output catalog result presentation.
 
-API → singleton state → scoped VM → view. The VM uses switchMap for replaceable connections and exhaustMap for commands, with lifetime teardown. Disconnect aborts handshake fetches, closes the SDK, invalidates stale results and clears shared state. ConsoleComponent retains the cohesive inline console template/styles (519 lines) as a migration exception to the approximate line guideline.
+API → singleton state → scoped VM → view. The VM uses switchMap for replaceable connections and exhaustMap for commands, with lifetime teardown. Disconnect aborts handshake fetches, closes the SDK, invalidates stale results and clears shared state. ConsoleComponent now composes stateless tool/request/result presenters and bounded design-system panels. The former large inline console exception is no longer needed.
 
 ## Protocol, authorization and contracts
 Dependencies: @modelcontextprotocol/client 2.3.1, @tmdjr/service-mcp-gateway-contracts 1.1.0 from a committed vendor tarball, and Ajv 8.17.1. No sibling build/runtime dependency. Protocol is pinned to 2026-07-28. Known commands list_workshops(sectionId), get_workshop(sectionId, workshopId), get_coding_lab(labId, versionId?) run only when discovered with readOnlyHint; discovery grants no authorization. Published schemas validate results; content is safely interpolated.
@@ -25,6 +25,23 @@ SDK fetch/request timeout: 15 seconds. Requests omit cookies and reject redirect
 OAuth issuer is https://auth.ngx-workshop.io; resource is https://mcp.ngx-workshop.io/mcp. Retain public client ngx-workshop-ai-publisher-prod with the registered exact https://admin.ngx-workshop.io/mcp-gateway/overview callback. Pending PKCE uses the dedicated ngx-mcp-gateway-pkce session-storage key with a ten-minute bound. Tokens live in memory only; expiry/401 clears the connection and results. No refresh token, browser secret or credential persistence. The shell's legacy login remains independent. The live auth client now approves overview alongside the former publisher callback (2026-10-13); registration acceptance was checked separately from frontend tests.
 
 ## Federation and routes
-Keep named/default App, named Routes, ./Component, ./Routes, remoteEntry.js and the existing remote identity/shared singleton versions. App composes ConsoleComponent. Empty path redirects to overview; overview renders App; hello-world is removed. The consuming shell must use /mcp-gateway/overview. Existing shell providers/theme apply; standalone appConfig supplies zoneless/HTTP/animations and src/styles.scss supplies its Material theme.
+Keep named/default App, named Routes, ./Component, ./Routes, remoteEntry.js and the existing remote identity/shared singleton versions. App composes ConsoleComponent. Empty path redirects to overview; overview renders App; hello-world is removed. The consuming shell must use /mcp-gateway/overview. Existing shell providers/theme apply; standalone appConfig supplies zoneless/HTTP/animations and src/styles.scss supplies the design-system theme fallback.
 
 Build output/deployment remain dist/mfe-user-journey-admin-mcp-gateway and /opt/mfe-remotes/mfe-user-journey-admin-mcp-gateway. No deployment or production registration is performed by the local migration.
+
+## Design system workspace — 2026-11-02
+ConsoleComponent opts into ngx-design-system and composes a shared NgxActionBar
+with connection status/actions above three independently scrollable panels:
+Gateway & tools, Request and Response. ConsolePanelComponent measures public
+panel chrome against the viewport allocation and cleans up observers/listeners.
+Below 1100px, Gateway/Request/Response controls show one bounded panel; choosing
+a tool or result drilldown opens Request and executing a valid tool opens Response.
+
+ConsoleToolsComponent and ConsoleRequestComponent are stateless typed-input/intent
+presenters. forms/console-form.ts constructs the same controls previously owned
+inline by the VM. ConsoleViewModel retains command validation, stream ownership,
+OAuth callback handling and teardown. ResultComponent renders compact workshop
+selection rows and ordered outlines; starter code, public tests and raw responses
+use NgxCodeBlock with wrapping and text-safe JSON/source rendering. Public semantic
+ngx tokens replace local Material palette/style fallbacks. No runtime imports from
+sibling repositories, backend/route/federation or authorization contract changes.

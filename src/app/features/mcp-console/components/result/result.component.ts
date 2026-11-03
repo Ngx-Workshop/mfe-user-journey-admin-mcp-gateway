@@ -1,3 +1,4 @@
+import { NgxButton, NgxCodeBlock, NgxCodeLanguage } from '@tmdjr/ngx-workshop-design-system';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,7 +11,7 @@ import type { CatalogResult } from '../../models/console.models';
 
 @Component({
   selector: 'ngx-mcp-result',
-  imports: [JsonPipe, MatButtonModule],
+  imports: [JsonPipe, MatButtonModule, NgxButton, NgxCodeBlock],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (result(); as result) {
@@ -25,22 +26,12 @@ import type { CatalogResult } from '../../models/console.models';
               track workshop.id
             ) {
               <article class="result__card">
-                <span class="result__eyebrow"
-                  >LEVEL {{ workshop.level }}</span
-                >
-                <h3>{{ workshop.title }}</h3>
-                <p>{{ workshop.summary }}</p>
-                <code>{{ workshop.id }}</code>
-                <button
-                  mat-button
-                  (click)="
-                    workshopSelected.emit({
-                      sectionId: workshop.sectionId,
-                      workshopId: workshop.id,
-                    })
-                  "
-                >
-                  Inspect workshop →
+                <button class="result__row" type="button" [attr.aria-label]="'Inspect workshop ' + workshop.title"
+                  (click)="workshopSelected.emit({ sectionId: workshop.sectionId, workshopId: workshop.id })">
+                  <span class="result__eyebrow">LEVEL {{ workshop.level }}</span>
+                  <strong>{{ workshop.title }}</strong>
+                  <span class="result__summary" [title]="workshop.summary">{{ workshop.summary }}</span>
+                  <code>{{ workshop.id }}</code>
                 </button>
               </article>
             } @empty {
@@ -67,7 +58,7 @@ import type { CatalogResult } from '../../models/console.models';
                   ><code>{{ item.resourceId }}</code>
                   @if (item.kind === 'CODING_LAB') {
                     <button
-                      mat-button
+                      mat-flat-button ngxButton surface="outline"
                       (click)="labSelected.emit(item.resourceId)"
                     >
                       Inspect lab →
@@ -93,7 +84,7 @@ import type { CatalogResult } from '../../models/console.models';
               result.data.lab.promptMarkdown
             }}</pre>
             <h4>Starter code</h4>
-            <pre>{{ result.data.lab.starterCode }}</pre>
+            <ngx-code-block [code]="result.data.lab.starterCode" label="Starter code" [language]="language(result.data.lab.language)" [wrap]="true" />
             <h4>Hints</h4>
             <ol>
               @for (hint of result.data.lab.hints; track $index) {
@@ -106,7 +97,7 @@ import type { CatalogResult } from '../../models/console.models';
             @for (test of result.data.lab.sampleTests; track $index) {
               <details>
                 <summary>{{ test.name }} · {{ test.kind }}</summary>
-                <pre>{{ test | json }}</pre>
+                <ngx-code-block [code]="(test | json) ?? ''" [label]="test.name" language="json" [wrap]="true" />
               </details>
             } @empty {
               <p>No public sample tests.</p>
@@ -115,95 +106,43 @@ import type { CatalogResult } from '../../models/console.models';
         }
         <details class="result__raw">
           <summary>View response JSON</summary>
-          <pre>{{ result.raw }}</pre>
+          <ngx-code-block [code]="result.raw" label="Response JSON" language="json" [wrap]="true" />
         </details>
       </div>
     }
   `,
-  styles: [
-    `
-      :host {
-        display: block;
-        min-width: 0;
-      }
-      .result {
-        color: var(--mat-sys-on-surface, #202a34);
-      }
-      .result__count,
-      .result__eyebrow {
-        color: var(--mat-sys-on-surface-variant, #566573);
-        font-size: 0.78rem;
-        letter-spacing: 0.05em;
-      }
-      .result__card {
-        padding: 1rem 0;
-        border-bottom: 1px solid
-          var(--mat-sys-outline-variant, #d8e0e5);
-      }
-      h3 {
-        margin: 0.5rem 0;
-        font-size: 1.2rem;
-      }
-      h4 {
-        margin: 1.5rem 0 0.65rem;
-      }
-      p,
-      li {
-        line-height: 1.65;
-      }
-      code {
-        overflow-wrap: anywhere;
-        font-size: 0.8rem;
-      }
-      .result__card button {
-        display: block;
-        margin-top: 0.75rem;
-      }
-      .result__outline {
-        padding-left: 1.4rem;
-      }
-      .result__outline li {
-        padding: 0.7rem 0.3rem;
-      }
-      .result__outline span,
-      .result__outline code {
-        display: block;
-      }
-      .result__outline span {
-        font-size: 0.7rem;
-        color: var(--mat-sys-primary, #006879);
-      }
-      pre {
-        padding: 1rem;
-        background: var(--mat-sys-surface-container, #eef3f6);
-        border-radius: 0.6rem;
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-        font-size: 0.8rem;
-        line-height: 1.6;
-      }
-      .result__prose {
-        font-family: inherit;
-      }
-      details {
-        margin-top: 0.7rem;
-      }
-      summary {
-        cursor: pointer;
-        padding: 0.7rem 0;
-        font-weight: 600;
-      }
-      .result__raw {
-        margin-top: 1.5rem;
-        border-top: 1px solid var(--mat-sys-outline-variant, #d8e0e5);
-      }
-      .result__empty {
-        padding: 2rem 0;
-      }
-    `,
-  ],
+  styles: [`
+    :host { display: block; min-width: 0; }
+    .result { color: var(--ngx-color-text); position: relative; min-width: 0; }
+    .result__count, .result__eyebrow { color: var(--ngx-color-muted); font: var(--ngx-font-label); font-size: 0.7rem; }
+    .result__card { border-bottom: 1px solid var(--ngx-color-border); }
+    .result__row { display: grid; gap: 2px; width: 100%; padding: 8px; border: 0; cursor: pointer; text-align: left;
+      background: var(--ngx-color-surface-low); color: var(--ngx-color-text); }
+    .result__row strong { font: 600 0.8rem/1.5 var(--ngx-font-mono); }
+    .result__row:hover { background: var(--ngx-color-surface-high); }
+    .result__row:focus-visible { outline: 2px solid var(--ngx-color-primary); outline-offset: -2px; }
+    .result__summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
+    h3 { margin: 0.5rem 0; font: 600 1rem/1.5 var(--ngx-font-mono); }
+    h4 { margin: 1rem 0 0.5rem; font-size: 0.8rem; }
+    p, li { font-size: 0.8rem; line-height: 1.6; }
+    code { overflow-wrap: anywhere; color: var(--ngx-color-primary); font-size: 0.7rem; }
+    .result__outline { padding-left: 1.25rem; }
+    .result__outline li { padding: 6px 4px; border-bottom: 1px solid var(--ngx-color-border); }
+    .result__outline span, .result__outline code { display: block; }
+    .result__outline span { color: var(--ngx-color-muted); font-size: 0.7rem; }
+    .result__prose { padding: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 0.8rem; background: var(--ngx-color-surface-low); }
+    ngx-code-block { position: relative; min-width: 0; }
+    details { margin-top: 0.75rem; }
+    summary { cursor: pointer; padding: 0.5rem 0; font-size: 0.8rem; font-weight: 600; }
+    .result__raw { border-top: 1px solid var(--ngx-color-border); }
+    .result__empty { padding: 1rem 0; }
+  `],
 })
 export class ResultComponent {
+  language(value: string): NgxCodeLanguage {
+    const language = value.toLowerCase();
+    return language === 'typescript' || language === 'javascript' || language === 'html' || language === 'css' || language === 'json' ? language : 'text';
+  }
   readonly result = input.required<CatalogResult>();
   readonly workshopSelected = output<{
     sectionId: string;

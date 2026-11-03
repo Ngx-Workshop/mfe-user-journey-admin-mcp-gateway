@@ -5,7 +5,7 @@ import {
   Injectable,
   signal,
 } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
+import { createConsoleForm } from '../../forms/console-form';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { exhaustMap, from, Subject } from 'rxjs';
 import { OAuthConnectionStore } from '../../state/oauth-connection.store';
@@ -42,12 +42,7 @@ export class ConsoleViewModel {
         tool.annotations?.readOnlyHint === true
     )
   );
-  readonly toolForm = new FormGroup({
-    sectionId: new FormControl('', { nonNullable: true }),
-    workshopId: new FormControl('', { nonNullable: true }),
-    labId: new FormControl('', { nonNullable: true }),
-    versionId: new FormControl('', { nonNullable: true }),
-  });
+  readonly toolForm = createConsoleForm();
   readonly validation = signal('');
 
   constructor() {

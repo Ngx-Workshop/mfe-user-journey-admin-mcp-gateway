@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { ConsoleComponent } from './features/mcp-console/pages/console/console.component';
 
 @Component({
+  host: { class: 'mcp-app ngx-design-system' },
   selector: 'mfe-user-journey-admin-mcp-gateway',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ConsoleComponent],

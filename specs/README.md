@@ -17,3 +17,5 @@ status when work changes. Select work from the user's request and this index;
 the largest folder number is not automatically the active feature.
 
 | 002 MCP Gateway migration | Implemented; integration pending | [Spec](002-mcp-gateway-migration/spec.md) | [Plan](002-mcp-gateway-migration/plan.md) | [Tasks](002-mcp-gateway-migration/tasks.md) | [Handoff](002-mcp-gateway-migration/handoff.md) |
+
+| 003 Design system | Complete | [Spec](003-design-system/spec.md) | [Plan](003-design-system/plan.md) | [Tasks](003-design-system/tasks.md) | [Handoff](003-design-system/handoff.md) |
