@@ -73,7 +73,9 @@ describe('Catalog result presentation', () => {
         (item) => item.textContent
       )
     ).toEqual(['Read first', 'Practice next']);
-    expect(el.querySelectorAll('.result__outline button').length).toBe(1);
+    expect(
+      el.querySelectorAll('.result__outline button').length
+    ).toBe(1);
     const selected = jasmine.createSpy('selected');
     fixture.componentInstance.labSelected.subscribe(selected);
     el.querySelector('button')!.click();
@@ -111,7 +113,11 @@ describe('Catalog result presentation', () => {
     expect(el.textContent).toContain('Public test');
     expect(el.querySelectorAll('ngx-code-block').length).toBe(3);
     const blocks = el.querySelectorAll('ngx-code-block');
-    expect(blocks[0].querySelector('code')?.textContent).toContain('const answer = 42;');
-    expect(JSON.parse(blocks[2].querySelector('code')!.textContent!)).toEqual({});
+    expect(blocks[0].querySelector('code')?.textContent).toContain(
+      'const answer = 42;'
+    );
+    expect(
+      JSON.parse(blocks[2].querySelector('code')!.textContent!)
+    ).toEqual({});
   });
 });
